@@ -1,0 +1,163 @@
+#include <Servo.h>
+
+Servo myservo;
+
+int ledMoist = 12;      
+int ledLeft  = 8;       
+int ledRight = 7;       
+int ledUltra = 9;       
+int ledLight = 10;      
+int ledServo = 11;      
+
+int moistPin = A0;
+int ldrPin   = A2;
+int trigPin  = 13;
+int echoPin  = A1;
+
+int IN1 = 3;
+int IN2 = 2;
+int IN3 = 4;
+int IN4 = 5;
+
+unsigned long lastBlink = 0;
+bool blinkState = false;
+
+bool leftBlink = false;
+bool rightBlink = false;
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(ledMoist, OUTPUT);
+  pinMode(ledLeft, OUTPUT);
+  pinMode(ledRight, OUTPUT);
+  pinMode(ledUltra, OUTPUT);
+  pinMode(ledLight, OUTPUT);
+  pinMode(ledServo, OUTPUT);
+
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+
+  myservo.attach(6);
+  myservo.write(0);
+  digitalWrite(ledServo, LOW);
+
+  stopCar();
+}
+
+void loop() {
+
+  int moist = analogRead(moistPin);
+  digitalWrite(ledMoist, moist > 600 ? HIGH : LOW);
+
+  int ldr = analogRead(ldrPin);
+  digitalWrite(ledLight, (ldr < 250) ? HIGH : LOW);  
+
+  long distance = getDistance();
+  digitalWrite(ledUltra, (distance > 0 && distance < 20) ? HIGH : LOW);
+
+  blinkUpdate();
+
+  if (Serial.available()) {
+    char cmd = Serial.read();
+
+    if (cmd == 'F') forward();
+    if (cmd == 'B') backward();
+    if (cmd == 'S') stopCar();
+
+    if (cmd == 'L') {
+      turnLeft();
+      leftBlink = true;
+      rightBlink = false;
+    }
+
+    if (cmd == 'R') {
+      turnRight();
+      rightBlink = true;
+      leftBlink = false;
+    }
+
+    if (cmd == 'O') {     
+      myservo.write(90);
+      digitalWrite(ledServo, HIGH);
+    }
+
+    if (cmd == 'C') {     
+      myservo.write(0);
+      digitalWrite(ledServo, LOW);
+    }
+  }
+}
+
+
+void blinkUpdate() {
+  if (millis() - lastBlink >= 300) {
+    lastBlink = millis();
+    blinkState = !blinkState;
+
+    if (leftBlink)
+      digitalWrite(ledLeft, blinkState);
+    else
+      digitalWrite(ledLeft, LOW);
+
+    if (rightBlink)
+      digitalWrite(ledRight, blinkState);
+    else
+      digitalWrite(ledRight, LOW);
+  }
+}
+
+long getDistance() {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(5);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  long duration = pulseIn(echoPin, HIGH);
+  return duration * 0.034 / 2;
+}
+
+
+void forward() {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+}
+
+void backward() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+}
+
+void stopCar() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
+
+  leftBlink = false;
+  rightBlink = false;
+}
+
+void turnLeft() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+}
+
+void turnRight() {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+}
